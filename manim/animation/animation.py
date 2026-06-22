@@ -211,7 +211,7 @@ class Animation:
             # the internal updaters of self.starting_mobject,
             # or any others among self.get_all_mobjects()
             self.mobject.suspend_updating()
-        self.interpolate(0)
+        self.interpolate(self.get_rate(func()(0))
 
     def finish(self) -> None:
         # TODO: begin and finish should require a scene as parameter.
@@ -222,7 +222,7 @@ class Animation:
         This method gets called when the animation is over.
 
         """
-        self.interpolate(1)
+        self.interpolate(self.get_rate_func()(1))
         if self.suspend_mobject_updating and self.mobject is not None:
             self.mobject.resume_updating()
 
