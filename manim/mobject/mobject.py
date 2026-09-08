@@ -1826,29 +1826,27 @@ class Mobject:
                     self.add(d, c, s, t)
 
         """
-        np_direction = np.asarray(direction)
-        np_aligned_edge = np.asarray(aligned_edge)
+        direction = np.asarray(direction)
+        aligned_edge = np.asarray(aligned_edge)
 
         if isinstance(mobject_or_point, Mobject):
-            mob = mobject_or_point
             if index_of_submobject_to_align is not None:
-                target_aligner = mob[index_of_submobject_to_align]
+                target_aligner = mobject_or_point[index_of_submobject_to_align]
             else:
-                target_aligner = mob
-            target_point = target_aligner.get_critical_point(
-                np_aligned_edge + np_direction
-            )
+                target_aligner = mobject_or_point
+            target_point = target_aligner.get_critical_point(aligned_edge + direction)
         else:
             target_point = mobject_or_point
         if submobject_to_align is not None:
-            aligner = submobject_to_align
+            source_aligner = submobject_to_align
         elif index_of_submobject_to_align is not None:
-            aligner = self[index_of_submobject_to_align]
+            source_aligner = self[index_of_submobject_to_align]
         else:
-            aligner = self
-        point_to_align = aligner.get_critical_point(np_aligned_edge - np_direction)
-        self.shift((target_point - point_to_align + buff * np_direction) * coor_mask)
-        return self
+            source_aligner = self
+
+        source_point = source_aligner.get_critical_point(aligned_edge - direction)
+        vector = (target_point - source_point + buff * direction) * coor_mask
+        return self.shift(vector)
 
     def shift_onto_screen(self, **kwargs: Any) -> Self:
         space_lengths = [config["frame_x_radius"], config["frame_y_radius"]]
