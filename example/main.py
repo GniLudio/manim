@@ -1,8 +1,4 @@
-from manim.mobject.geometry.arc import Circle
-from manim.mobject.geometry.polygram import Square, Star
-from manim.scene.scene import Scene
-
-from .animations import (
+from example.animations import (
     Add,
     AnimationGroup,
     MoveToAnimation,
@@ -10,6 +6,9 @@ from .animations import (
     Succession,
     Wait,
 )
+from manim.mobject.geometry.arc import Circle
+from manim.mobject.geometry.polygram import Square, Star
+from manim.scene.scene import Scene
 
 
 class ExampleScene(Scene):
