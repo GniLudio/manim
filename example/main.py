@@ -1,7 +1,7 @@
 from example.animations import (
     Add,
     AnimationGroup,
-    MoveToAnimation,
+    MoveTo,
     Remove,
     Succession,
     Wait,
@@ -22,8 +22,8 @@ class ExampleScene(Scene):
                 Add(square),
                 Wait(0.5),
                 AnimationGroup(
-                    MoveToAnimation(circle, (3, 0, 0)),
-                    MoveToAnimation(square, (-3, 0, 0)),
+                    MoveTo(circle, (3, 0, 0)),
+                    MoveTo(square, (-3, 0, 0)),
                 ),
                 Wait(0.5),
                 Remove(circle),
@@ -31,8 +31,8 @@ class ExampleScene(Scene):
                 Add(star),
                 Wait(0.5),
                 Succession(
-                    MoveToAnimation(star, (2, 2, 0)),
-                    MoveToAnimation(star, (2, -2, 0)),
+                    MoveTo(star, (2, 2, 0)),
+                    MoveTo(star, (2, -2, 0)),
                     run_time=2,
                 ),
                 lag_ratio=1.0,

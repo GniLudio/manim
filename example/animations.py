@@ -55,7 +55,7 @@ class Remove(MobjectAnimation):
         super().setup(scene)
 
 
-class MoveToAnimation(MobjectAnimation):
+class MoveTo(MobjectAnimation):
     def __init__(
         self,
         mobject: Mobject,
