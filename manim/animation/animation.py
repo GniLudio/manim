@@ -24,10 +24,8 @@ DEFAULT_ANIMATION_LAG_RATIO: float = 0.0
 class Animation:
     def __init__(
         self,
-        *args: Any,
         run_time: float = DEFAULT_ANIMATION_RUN_TIME,
         rate_func: RateFunction = linear,
-        **kwargs: Any,
     ) -> None:
         self.run_time = run_time
         self.rate_func = rate_func
