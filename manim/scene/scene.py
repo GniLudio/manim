@@ -558,18 +558,6 @@ class Scene:
                 self.moving_mobjects += new_and_foreground_mobjects
         return self
 
-    def add_mobjects_from_animations(self, animations: list[Animation]) -> None:
-        curr_mobjects = self.get_mobject_family_members()
-        for animation in animations:
-            if animation.is_introducer():
-                continue
-            # Anything animated that's not already in the
-            # scene gets added to the scene
-            mob = animation.mobject
-            if mob is not None and mob not in curr_mobjects:
-                self.add(mob)
-                curr_mobjects += mob.get_family()  # type: ignore[arg-type]
-
     def remove(self, *mobjects: Mobject) -> Self:
         """
         Removes mobjects in the passed list of mobjects
@@ -951,7 +939,7 @@ class Scene:
             for anim in nested_animations:
                 # Keep composition wrappers as conservative boundaries for the
                 # static frame cache, in addition to their nested animations.
-                animation_mobjects.extend(anim.mobject.get_family())
+                animation_mobjects.extend(anim.get_animated_mobjects())
                 if isinstance(anim, AnimationGroup):
                     animation_mobjects.extend(
                         _collect_animation_mobjects(anim.animations),
@@ -1145,7 +1133,7 @@ class Scene:
         parameter_name: str = "run_time",
     ) -> float:
         method_name = f"{cls.__name__}.{method.__name__}()"
-        if run_time <= 0:
+        if run_time < 0:
             raise ValueError(
                 f"{method_name} has a {parameter_name} of "
                 f"{run_time:g} <= 0 seconds which Manim cannot render. "
@@ -1338,7 +1326,6 @@ class Scene:
             raise ValueError("Called Scene.play with no animations")
 
         self.animations = self.compile_animations(*animations, **play_kwargs)
-        self.add_mobjects_from_animations(self.animations)
 
         self.last_t = 0
         self.stop_condition = None
@@ -1361,8 +1348,7 @@ class Scene:
         """Start the animations of the scene."""
         assert self.animations is not None
         for animation in self.animations:
-            animation._setup_scene(self)
-            animation.begin()
+            animation.setup(self)
 
         if config.renderer == RendererType.CAIRO:
             # Paint all non-moving objects onto the screen, so they don't
@@ -1407,8 +1393,7 @@ class Scene:
                 break
 
         for animation in self.animations:
-            animation.finish()
-            animation.clean_up_from_scene(self)
+            animation.finish(self)
         if not self.renderer.skip_animations:
             self.update_mobjects(0)
         # TODO: The OpenGLRenderer does not have the property static.image.
@@ -1716,9 +1701,8 @@ class Scene:
         self.last_t = t
         assert self.animations is not None
         for animation in self.animations:
-            animation.update_mobjects(dt)
-            alpha = t / animation.run_time
-            animation.interpolate(alpha)
+            alpha = t / animation.run_time if animation.run_time != 0 else 1
+            animation.update(alpha)
         self.update_mobjects(dt)
         self.update_meshes(dt)
         self.update_self(dt)
