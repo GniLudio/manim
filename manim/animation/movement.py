@@ -2,12 +2,18 @@
 
 from __future__ import annotations
 
+from manim.constants import ORIGIN
+from manim.mobject.mobject import Mobject
+from manim.scene.scene import Scene
+from manim.typing import Point3DLike, Vector3DLike
+
 __all__ = [
     "Homotopy",
     "SmoothedVectorizedHomotopy",
     "ComplexHomotopy",
     "PhaseFlow",
     "MoveAlongPath",
+    "MoveTo",
 ]
 
 from collections.abc import Callable
@@ -15,7 +21,11 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
-from ..animation.animation import Animation
+from ..animation.animation import (
+    DEFAULT_ANIMATION_RUN_TIME,
+    Animation,
+    MobjectAnimation,
+)
 from ..utils.rate_functions import linear
 
 if TYPE_CHECKING:
@@ -24,8 +34,6 @@ if TYPE_CHECKING:
     from manim.mobject.types.vectorized_mobject import VMobject
     from manim.typing import MappingFunction, Point3D
     from manim.utils.rate_functions import RateFunction
-
-    from ..mobject.mobject import Mobject
 
 
 class Homotopy(Animation):
@@ -200,3 +208,32 @@ class MoveAlongPath(Animation):
     def interpolate_mobject(self, alpha: float) -> None:
         point = self.path.point_from_proportion(self.rate_func(alpha))
         self.mobject.move_to(point)
+
+
+class MoveTo(MobjectAnimation):
+    def __init__(
+        self,
+        mobject: Mobject,
+        point_or_mobject: Point3DLike | Mobject,
+        *,
+        aligned_edge: Vector3DLike = ORIGIN,
+        run_time: float = DEFAULT_ANIMATION_RUN_TIME,
+        rate_func: RateFunction = linear,
+    ) -> None:
+        super().__init__(mobject, run_time=run_time, rate_func=rate_func)
+        self.point_or_mobject = point_or_mobject
+        self.aligned_edge = aligned_edge
+
+    def setup(self, scene: Scene) -> None:
+        self._start_point = self.mobject.get_critical_point(self.aligned_edge)
+        self._target_point = (
+            np.array(self.point_or_mobject)
+            if not isinstance(self.point_or_mobject, Mobject)
+            else self.point_or_mobject.get_critical_point(self.aligned_edge)
+        )
+        super().setup(scene)
+
+    def update(self, alpha: float) -> None:
+        alpha = self.rate_func(alpha)
+        point = (1 - alpha) * self._start_point + alpha * self._target_point
+        self.mobject.move_to(point, aligned_edge=self.aligned_edge)

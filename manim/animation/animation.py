@@ -43,6 +43,21 @@ class Animation:
         return set()
 
 
+class MobjectAnimation(Animation):
+    def __init__(
+        self,
+        mobject: Mobject,
+        *,
+        run_time: float = DEFAULT_ANIMATION_RUN_TIME,
+        rate_func: RateFunction = linear,
+    ) -> None:
+        super().__init__(run_time=run_time, rate_func=rate_func)
+        self.mobject = mobject
+
+    def get_animated_mobjects(self) -> set[Mobject]:
+        return {self.mobject}
+
+
 def prepare_animation(
     anim: Animation | mobject._AnimationBuilder | opengl_mobject._AnimationBuilder,
 ) -> Animation:
@@ -85,60 +100,7 @@ def prepare_animation(
 
 
 class Wait(Animation):
-    """A "no operation" animation.
-
-    Parameters
-    ----------
-    run_time
-        The amount of time that should pass.
-    stop_condition
-        A function without positional arguments that evaluates to a boolean.
-        The function is evaluated after every new frame has been rendered.
-        Playing the animation stops after the return value is truthy, or
-        after the specified ``run_time`` has passed.
-    frozen_frame
-        Controls whether or not the wait animation is static, i.e., corresponds
-        to a frozen frame. If ``False`` is passed, the render loop still
-        progresses through the animation as usual and (among other things)
-        continues to call updater functions. If ``None`` (the default value),
-        the :meth:`.Scene.play` call tries to determine whether the Wait call
-        can be static or not itself via :meth:`.Scene.should_mobjects_update`.
-    kwargs
-        Keyword arguments to be passed to the parent class, :class:`.Animation`.
-    """
-
-    def __init__(
-        self,
-        run_time: float = 1,
-        stop_condition: Callable[[], bool] | None = None,
-        frozen_frame: bool | None = None,
-        rate_func: Callable[[float], float] = linear,
-        **kwargs,
-    ):
-        if stop_condition and frozen_frame:
-            raise ValueError("A static Wait animation cannot have a stop condition.")
-
-        self.duration: float = run_time
-        self.stop_condition = stop_condition
-        self.is_static_wait: bool = frozen_frame
-        super().__init__(None, run_time=run_time, rate_func=rate_func, **kwargs)
-        # quick fix to work in opengl setting:
-        self.mobject.shader_wrapper_list = []
-
-    def begin(self) -> None:
-        pass
-
-    def finish(self) -> None:
-        pass
-
-    def clean_up_from_scene(self, scene: Scene) -> None:
-        pass
-
-    def update_mobjects(self, dt: float) -> None:
-        pass
-
-    def interpolate(self, alpha: float) -> None:
-        pass
+    pass
 
 
 class Add(Animation):

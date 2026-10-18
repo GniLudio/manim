@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from manim.typing import PathFuncType
+
 __all__ = [
     "Transform",
     "ReplacementTransform",
@@ -28,7 +30,7 @@ __all__ = [
 
 import inspect
 import types
-from collections.abc import Callable, Iterable, Sequence
+from collections.abc import Callable, Sequence
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
@@ -37,217 +39,55 @@ from manim.data_structures import MethodWithArgs
 from manim.mobject.opengl.opengl_mobject import OpenGLGroup, OpenGLMobject
 
 from .. import config
-from ..animation.animation import Animation
+from ..animation.animation import (
+    DEFAULT_ANIMATION_RUN_TIME,
+    Animation,
+    MobjectAnimation,
+)
 from ..constants import (
     DEFAULT_POINTWISE_FUNCTION_RUN_TIME,
     DEGREES,
     ORIGIN,
-    OUT,
     RendererType,
 )
 from ..mobject.mobject import Group, Mobject
 from ..mobject.types.vectorized_mobject import VGroup
-from ..utils.paths import path_along_arc, path_along_circles
-from ..utils.rate_functions import smooth, squish_rate_func
+from ..utils.paths import straight_path
+from ..utils.rate_functions import RateFunction, smooth, squish_rate_func
 
 if TYPE_CHECKING:
     from ..scene.scene import Scene
-    from ..typing import Point3DLike, Point3DLike_Array
 
 
-class Transform(Animation):
-    """A Transform transforms a Mobject into a target Mobject.
-
-    Parameters
-    ----------
-    mobject
-        The :class:`.Mobject` to be transformed. It will be mutated to become the ``target_mobject``.
-    target_mobject
-        The target of the transformation.
-    path_func
-        A function defining the path that the points of the ``mobject`` are being moved
-        along until they match the points of the ``target_mobject``, see :mod:`.utils.paths`.
-    path_arc
-        The arc angle (in radians) that the points of ``mobject`` will follow to reach
-        the points of the target if using a circular path arc, see ``path_arc_centers``.
-        See also :func:`manim.utils.paths.path_along_arc`.
-    path_arc_axis
-        The axis to rotate along if using a circular path arc, see ``path_arc_centers``.
-    path_arc_centers
-        The center of the circular arcs along which the points of ``mobject`` are
-        moved by the transformation.
-
-        If this is set and ``path_func`` is not set, then a ``path_along_circles`` path will be generated
-        using the ``path_arc`` parameters and stored in ``path_func``. If ``path_func`` is set, this and the
-        other ``path_arc`` fields are set as attributes, but a ``path_func`` is not generated from it.
-    replace_mobject_with_target_in_scene
-        Controls which mobject is replaced when the transformation is complete.
-
-        If set to True, ``mobject`` will be removed from the scene and ``target_mobject`` will
-        replace it. Otherwise, ``target_mobject`` is never added and ``mobject`` just takes its shape.
-
-    Examples
-    --------
-
-    .. manim :: TransformPathArc
-
-        class TransformPathArc(Scene):
-            def construct(self):
-                def make_arc_path(start, end, arc_angle):
-                    points = []
-                    p_fn = path_along_arc(arc_angle)
-                    # alpha animates between 0.0 and 1.0, where 0.0
-                    # is the beginning of the animation and 1.0 is the end.
-                    for alpha in range(0, 11):
-                        points.append(p_fn(start, end, alpha / 10.0))
-                    path = VMobject(stroke_color=YELLOW)
-                    path.set_points_smoothly(points)
-                    return path
-
-                left = Circle(stroke_color=BLUE_E, fill_opacity=1.0, radius=0.5).move_to(LEFT * 2)
-                colors = [TEAL_A, TEAL_B, TEAL_C, TEAL_D, TEAL_E, GREEN_A]
-                # Positive angles move counter-clockwise, negative angles move clockwise.
-                examples = [-90, 0, 30, 90, 180, 270]
-                anims = []
-                for idx, angle in enumerate(examples):
-                    left_c = left.copy().shift((3 - idx) * UP)
-                    left_c.fill_color = colors[idx]
-                    right_c = left_c.copy().shift(4 * RIGHT)
-                    path_arc = make_arc_path(left_c.get_center(), right_c.get_center(),
-                                             arc_angle=angle * DEGREES)
-                    desc = Text('%d°' % examples[idx]).next_to(left_c, LEFT)
-                    # Make the circles in front of the text in front of the arcs.
-                    self.add(
-                        path_arc.set_z_index(1),
-                        desc.set_z_index(2),
-                        left_c.set_z_index(3),
-                    )
-                    anims.append(Transform(left_c, right_c, path_arc=angle * DEGREES))
-
-                self.play(*anims, run_time=2)
-                self.wait()
-
-    See also
-    --------
-    :class:`~.ReplacementTransform`, :meth:`~.Mobject.interpolate`, :meth:`~.Mobject.align_data`
-    """
-
+class Transform(MobjectAnimation):
     def __init__(
         self,
-        mobject: Mobject | None,
-        target_mobject: Mobject | None = None,
-        path_func: Callable | None = None,
-        path_arc: float = 0,
-        path_arc_axis: np.ndarray = OUT,
-        path_arc_centers: Point3DLike | Point3DLike_Array | None = None,
-        replace_mobject_with_target_in_scene: bool = False,
-        **kwargs,
+        mobject: Mobject,
+        target_mobject: Mobject,
+        *,
+        path_func: PathFuncType = straight_path(),
+        run_time: float = DEFAULT_ANIMATION_RUN_TIME,
+        rate_func: RateFunction = smooth,
     ) -> None:
-        self.path_arc_axis: np.ndarray = path_arc_axis
-        self.path_arc_centers: Point3DLike | Point3DLike_Array | None = path_arc_centers
-        self.path_arc: float = path_arc
+        super().__init__(mobject, run_time=run_time, rate_func=rate_func)
+        self.target = target_mobject
+        self.path_func = path_func
 
-        # path_func is a property a few lines below so it doesn't need to be set in any case
-        if path_func is not None:
-            self.path_func: Callable = path_func
-        elif self.path_arc_centers is not None:
-            self.path_func = path_along_circles(
-                path_arc,
-                self.path_arc_centers,
-                self.path_arc_axis,
+    def setup(self, scene: Scene) -> None:
+        self.mobject.align_data(self.target)
+        self._families = list(
+            zip(
+                self.mobject.family_members_with_points(),
+                self.mobject.copy().family_members_with_points(),
+                self.target.copy().family_members_with_points(),
+                strict=True,
             )
-
-        self.replace_mobject_with_target_in_scene: bool = (
-            replace_mobject_with_target_in_scene
         )
-        self.target_mobject: Mobject = (
-            target_mobject if target_mobject is not None else Mobject()
-        )
-        super().__init__(mobject, **kwargs)
+        return super().setup(scene)
 
-    @property
-    def path_arc(self) -> float:
-        return self._path_arc
-
-    @path_arc.setter
-    def path_arc(self, path_arc: float) -> None:
-        self._path_arc = path_arc
-        self._path_func = path_along_arc(
-            arc_angle=self._path_arc,
-            axis=self.path_arc_axis,
-        )
-
-    @property
-    def path_func(
-        self,
-    ) -> Callable[
-        [Iterable[np.ndarray], Iterable[np.ndarray], float],
-        Iterable[np.ndarray],
-    ]:
-        return self._path_func
-
-    @path_func.setter
-    def path_func(
-        self,
-        path_func: Callable[
-            [Iterable[np.ndarray], Iterable[np.ndarray], float],
-            Iterable[np.ndarray],
-        ],
-    ) -> None:
-        if path_func is not None:
-            self._path_func = path_func
-
-    def begin(self) -> None:
-        # Use a copy of target_mobject for the align_data
-        # call so that the actual target_mobject stays
-        # preserved.
-        self.target_mobject = self.create_target()
-        self.target_copy = self.target_mobject.copy()
-        # Note, this potentially changes the structure
-        # of both mobject and target_mobject
-        if config.renderer == RendererType.OPENGL:
-            self.mobject.align_data_and_family(self.target_copy)
-        else:
-            self.mobject.align_data(self.target_copy)
-        super().begin()
-
-    def create_target(self) -> Mobject | OpenGLMobject:
-        # Has no meaningful effect here, but may be useful
-        # in subclasses
-        return self.target_mobject
-
-    def clean_up_from_scene(self, scene: Scene) -> None:
-        super().clean_up_from_scene(scene)
-        if self.replace_mobject_with_target_in_scene:
-            scene.replace(self.mobject, self.target_mobject)
-
-    def get_all_mobjects(self) -> Sequence[Mobject]:
-        return [
-            self.mobject,
-            self.starting_mobject,
-            self.target_mobject,
-            self.target_copy,
-        ]
-
-    def get_all_families_zipped(self) -> Iterable[tuple]:  # more precise typing?
-        mobs = [
-            self.mobject,
-            self.starting_mobject,
-            self.target_copy,
-        ]
-        if config.renderer == RendererType.OPENGL:
-            return zip(*(mob.get_family() for mob in mobs), strict=True)
-        return zip(*(mob.family_members_with_points() for mob in mobs), strict=True)
-
-    def interpolate_submobject(
-        self,
-        submobject: Mobject,
-        starting_submobject: Mobject,
-        target_copy: Mobject,
-        alpha: float,
-    ) -> Transform:
-        submobject.interpolate(starting_submobject, target_copy, alpha, self.path_func)
-        return self
+    def update(self, alpha: float) -> None:
+        for sub, start_sub, target_sub in self._families:
+            sub.interpolate(start_sub, target_sub, alpha, self.path_func)
 
 
 class ReplacementTransform(Transform):

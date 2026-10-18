@@ -1,8 +1,4 @@
-from example.animations import *
-from manim.mobject.geometry.arc import Circle
-from manim.mobject.geometry.polygram import Square, Star
-from manim.mobject.text.text_mobject import Text
-from manim.scene.scene import Scene
+from manim import *
 
 
 class AnimationGroupExample(Scene):
