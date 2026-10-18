@@ -1,17 +1,11 @@
-from example.animations import (
-    Add,
-    AnimationGroup,
-    MoveTo,
-    Remove,
-    Succession,
-    Wait,
-)
+from example.animations import *
 from manim.mobject.geometry.arc import Circle
 from manim.mobject.geometry.polygram import Square, Star
+from manim.mobject.text.text_mobject import Text
 from manim.scene.scene import Scene
 
 
-class ExampleScene(Scene):
+class AnimationGroupExample(Scene):
     def construct(self) -> None:
         circle, square, star = Circle(), Square(), Star()
         self.play(
@@ -39,3 +33,11 @@ class ExampleScene(Scene):
                 run_time=10.0,
             )
         )
+
+
+class TransformExample(Scene):
+    def construct(self) -> None:
+        mob_1 = Text("Hello")
+        mob_2 = Text("World")
+        self.add(mob_1)
+        self.play(Transform(mob_1, mob_2))

@@ -6,7 +6,8 @@ from manim.animation.animation import DEFAULT_ANIMATION_RUN_TIME, Animation
 from manim.constants import ORIGIN
 from manim.mobject.mobject import Mobject
 from manim.scene.scene import Scene
-from manim.typing import Point3DLike, Vector3DLike
+from manim.typing import PathFuncType, Point3DLike, Vector3DLike
+from manim.utils.paths import straight_path
 from manim.utils.rate_functions import RateFunction, linear
 
 
@@ -35,7 +36,7 @@ class Add(MobjectAnimation):
     ) -> None:
         super().__init__(mobject, run_time=run_time, rate_func=rate_func)
 
-    def setup(self, scene: Scene) -> Any:
+    def setup(self, scene: Scene) -> None:
         scene.add(self.mobject)
         super().setup(scene)
 
@@ -50,7 +51,7 @@ class Remove(MobjectAnimation):
     ) -> None:
         super().__init__(mobject, run_time=run_time, rate_func=rate_func)
 
-    def setup(self, scene: Scene) -> Any:
+    def setup(self, scene: Scene) -> None:
         scene.remove(self.mobject)
         super().setup(scene)
 
@@ -69,7 +70,7 @@ class MoveTo(MobjectAnimation):
         self.point_or_mobject = point_or_mobject
         self.aligned_edge = aligned_edge
 
-    def setup(self, scene: Scene) -> Any:
+    def setup(self, scene: Scene) -> None:
         self._start_point = self.mobject.get_critical_point(self.aligned_edge)
         self._target_point = (
             np.array(self.point_or_mobject)
@@ -78,7 +79,7 @@ class MoveTo(MobjectAnimation):
         )
         super().setup(scene)
 
-    def update(self, alpha: float) -> Any:
+    def update(self, alpha: float) -> None:
         alpha = self.rate_func(alpha)
         point = (1 - alpha) * self._start_point + alpha * self._target_point
         self.mobject.move_to(point, aligned_edge=self.aligned_edge)
@@ -96,13 +97,13 @@ class AnimationGroup(Animation):
         self.animations = animations
         self.lag_ratio = lag_ratio
 
-    def setup(self, scene: Scene) -> Any:
+    def setup(self, scene: Scene) -> None:
         self._scene = scene
         self._started_animations: set[Animation] = set()
         self._finished_animations: set[Animation] = set()
         super().setup(scene)
 
-    def update(self, alpha: float) -> Any:
+    def update(self, alpha: float) -> None:
         alpha = self.rate_func(alpha)
         self._timings = self._get_animation_timings()
 
@@ -177,3 +178,34 @@ class Succession(AnimationGroup):
 
 class Wait(Animation):
     pass
+
+
+class Transform(MobjectAnimation):
+    def __init__(
+        self,
+        mobject: Mobject,
+        target_mobject: Mobject,
+        *,
+        path_func: PathFuncType = straight_path(),
+        run_time: float = DEFAULT_ANIMATION_RUN_TIME,
+        rate_func: RateFunction = linear,
+    ) -> None:
+        super().__init__(mobject, run_time=run_time, rate_func=rate_func)
+        self.target = target_mobject
+        self.path_func = path_func
+
+    def setup(self, scene: Scene) -> None:
+        self.mobject.align_data(self.target)
+        self._families = list(
+            zip(
+                self.mobject.family_members_with_points(),
+                self.mobject.copy().family_members_with_points(),
+                self.target.copy().family_members_with_points(),
+                strict=True,
+            )
+        )
+        return super().setup(scene)
+
+    def update(self, alpha: float) -> None:
+        for sub, start_sub, target_sub in self._families:
+            sub.interpolate(start_sub, target_sub, alpha, self.path_func)

@@ -30,13 +30,13 @@ class Animation:
         self.run_time = run_time
         self.rate_func = rate_func
 
-    def setup(self, scene: Scene) -> Any:
+    def setup(self, scene: Scene) -> None:
         self.update(0)
 
-    def update(self, alpha: float) -> Any:
+    def update(self, alpha: float) -> None:
         pass
 
-    def finish(self, scene: Scene) -> Any:
+    def finish(self, scene: Scene) -> None:
         self.update(1)
 
     def get_animated_mobjects(self) -> set[Mobject]:
