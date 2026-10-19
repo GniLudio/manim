@@ -31,7 +31,7 @@ __all__ = [
 import inspect
 import types
 from collections.abc import Callable, Sequence
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 import numpy as np
 
@@ -54,9 +54,6 @@ from ..mobject.mobject import Group, Mobject
 from ..mobject.types.vectorized_mobject import VGroup
 from ..utils.paths import straight_path
 from ..utils.rate_functions import RateFunction, smooth, squish_rate_func
-
-if TYPE_CHECKING:
-    from ..scene.scene import Scene
 
 
 class Transform(MobjectAnimation):

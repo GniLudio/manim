@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from manim.constants import ORIGIN
 from manim.mobject.mobject import Mobject
-from manim.scene.scene import Scene
 from manim.typing import Point3DLike, Vector3DLike
 
 __all__ = [
