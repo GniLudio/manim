@@ -7,18 +7,18 @@ class AnimationGroupExample(Scene):
         self.play(
             AnimationGroup(
                 Wait(0.5),
-                Add(circle),
+                Add(circle, self),
                 Wait(0.5),
-                Add(square),
+                Add(square, self),
                 Wait(0.5),
                 AnimationGroup(
                     MoveTo(circle, (3, 0, 0)),
                     MoveTo(square, (-3, 0, 0)),
                 ),
                 Wait(0.5),
-                Remove(circle),
+                Remove(circle, self),
                 Wait(0.5),
-                Add(star),
+                Add(star, self),
                 Wait(0.5),
                 Succession(
                     MoveTo(star, (2, 2, 0)),

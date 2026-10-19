@@ -1348,7 +1348,7 @@ class Scene:
         """Start the animations of the scene."""
         assert self.animations is not None
         for animation in self.animations:
-            animation.setup(self)
+            animation.setup()
 
         if config.renderer == RendererType.CAIRO:
             # Paint all non-moving objects onto the screen, so they don't
@@ -1393,7 +1393,7 @@ class Scene:
                 break
 
         for animation in self.animations:
-            animation.finish(self)
+            animation.finish()
         if not self.renderer.skip_animations:
             self.update_mobjects(0)
         # TODO: The OpenGLRenderer does not have the property static.image.

@@ -73,7 +73,7 @@ class Transform(MobjectAnimation):
         self.target = target_mobject
         self.path_func = path_func
 
-    def setup(self, scene: Scene) -> None:
+    def setup(self) -> None:
         self.mobject.align_data(self.target)
         self._families = list(
             zip(
@@ -83,7 +83,7 @@ class Transform(MobjectAnimation):
                 strict=True,
             )
         )
-        return super().setup(scene)
+        return super().setup()
 
     def update(self, alpha: float) -> None:
         for sub, start_sub, target_sub in self._families:

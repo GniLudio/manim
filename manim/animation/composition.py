@@ -42,22 +42,20 @@ class AnimationGroup(Animation):
         self.animations = animations
         self.lag_ratio = lag_ratio
 
-    def setup(self, scene: Scene) -> None:
-        self._scene = scene
+    def setup(self) -> None:
         self._started_animations: set[Animation] = set()
         self._finished_animations: set[Animation] = set()
-        super().setup(scene)
+        super().setup()
 
     def update(self, alpha: float) -> None:
         alpha = self.rate_func(alpha)
         self._timings = self._get_animation_timings()
 
-        for (start, _), animation in zip(self._timings, self.animations, strict=True):
+        for (start, end), animation in zip(self._timings, self.animations, strict=True):
             if start <= alpha and animation not in self._started_animations:
-                animation.setup(self._scene)
+                animation.setup()
                 self._started_animations.add(animation)
 
-        for (start, end), animation in zip(self._timings, self.animations, strict=True):
             if (
                 animation in self._started_animations
                 and animation not in self._finished_animations
@@ -70,8 +68,8 @@ class AnimationGroup(Animation):
                     animation_alpha = 1
                 animation.update(animation_alpha)
 
-        for (_, end), animation in zip(self._timings, self.animations, strict=True):
             if end <= alpha and animation not in self._finished_animations:
+                animation.finish()
                 self._finished_animations.add(animation)
 
     def _get_animation_timings(self) -> list[tuple[float, float]]:
@@ -252,27 +250,31 @@ class Add(MobjectAnimation):
     def __init__(
         self,
         mobject: Mobject,
+        scene: Scene,
         *,
         run_time: float = 0,
         rate_func: RateFunction = linear,
     ) -> None:
         super().__init__(mobject, run_time=run_time, rate_func=rate_func)
+        self.scene = scene
 
-    def setup(self, scene: Scene) -> None:
-        scene.add(self.mobject)
-        super().setup(scene)
+    def setup(self) -> None:
+        self.scene.add(self.mobject)
+        super().setup()
 
 
 class Remove(MobjectAnimation):
     def __init__(
         self,
         mobject: Mobject,
+        scene: Scene,
         *,
         run_time: float = 0,
         rate_func: RateFunction = linear,
     ) -> None:
         super().__init__(mobject, run_time=run_time, rate_func=rate_func)
+        self.scene = scene
 
-    def setup(self, scene: Scene) -> None:
-        scene.remove(self.mobject)
-        super().setup(scene)
+    def setup(self) -> None:
+        self.scene.remove(self.mobject)
+        super().setup()

@@ -224,14 +224,14 @@ class MoveTo(MobjectAnimation):
         self.point_or_mobject = point_or_mobject
         self.aligned_edge = aligned_edge
 
-    def setup(self, scene: Scene) -> None:
+    def setup(self) -> None:
         self._start_point = self.mobject.get_critical_point(self.aligned_edge)
         self._target_point = (
             np.array(self.point_or_mobject)
             if not isinstance(self.point_or_mobject, Mobject)
             else self.point_or_mobject.get_critical_point(self.aligned_edge)
         )
-        super().setup(scene)
+        super().setup()
 
     def update(self, alpha: float) -> None:
         alpha = self.rate_func(alpha)
