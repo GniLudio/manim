@@ -2,7 +2,7 @@
 
 .. note::
    Just as you can use :class:`~.Tex` and :class:`~.MathTex` (from the module :mod:`~.tex_mobject`)
-   to insert LaTeX to your videos, you can use :class:`~.Text` to to add normal text.
+   to insert LaTeX to your videos, you can use :class:`~.Text` to add normal text.
 
 .. important::
 
@@ -547,6 +547,7 @@ class Text(SVGMobject):
             width=width,
             should_center=should_center,
             use_svg_cache=use_svg_cache,
+            color=parsed_color,
             **kwargs,
         )
         self.text = text
@@ -1257,6 +1258,7 @@ class MarkupText(SVGMobject):
             height=height,
             width=width,
             should_center=should_center,
+            color=parsed_color,
             **kwargs,
         )
 
