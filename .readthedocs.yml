@@ -13,6 +13,13 @@ build:
     - libpango1.0-dev
     - graphviz
 
+  jobs:
+    build:
+      # Same as Read the Docs' default HTML build, plus ``-j auto`` to read
+      # (and render the examples) and write in parallel.
+      html:
+        - cd docs/source && python -m sphinx -T -j auto -b html -d ../build/doctrees -D language=en . $READTHEDOCS_OUTPUT/html
+
 python:
    install:
       - requirements: docs/rtd-requirements.txt

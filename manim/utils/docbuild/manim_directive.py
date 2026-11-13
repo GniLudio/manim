@@ -105,7 +105,7 @@ if TYPE_CHECKING:
 __all__ = ["ManimDirective"]
 
 
-classnamedict: dict[str, int] = {}
+classnamedict: dict[tuple[str, str], int] = {}
 
 
 class SetupMetadata(TypedDict):
@@ -213,13 +213,12 @@ class ManimDirective(Directive):
 
         from manim import config, tempconfig
 
-        global classnamedict
-
+        docname = self.state.document.settings.env.docname
         clsname = self.arguments[0]
-        if clsname not in classnamedict:
-            classnamedict[clsname] = 1
-        else:
-            classnamedict[clsname] += 1
+        # Count per document (not globally), so that output names do not depend
+        # on which documents a parallel worker process happens to read.
+        count_key = (docname, clsname)
+        classnamedict[count_key] = classnamedict.get(count_key, 0) + 1
 
         hide_source = "hide_source" in self.options
         no_autoplay = "no_autoplay" in self.options
@@ -268,10 +267,16 @@ class ManimDirective(Directive):
         ]
         source_block = "\n".join(source_block_in)
 
-        config.media_dir = (Path(setup.confdir) / "media").absolute()  # type: ignore[attr-defined]
+        # Every document gets its own media directory (including the Tex/text
+        # caches and partial movie files), and the copied video gets a name that
+        # is unique within its output directory. This keeps documents independent
+        # of each other, so they can be read and rendered in parallel
+        # (``sphinx-build -j``) without processes clobbering each other's files.
+        config.media_dir = (Path(setup.confdir) / "media" / docname).absolute()  # type: ignore[attr-defined]
         config.images_dir = "{media_dir}/images"
         config.video_dir = "{media_dir}/videos/{quality}"
-        output_file = f"{clsname}-{classnamedict[clsname]}"
+        output_file = f"{clsname}-{classnamedict[count_key]}"
+        video_name = f"{Path(docname).name}-{output_file}.mp4"
         config.assets_dir = Path("_static")
         config.progress_bar = "none"
         config.verbosity = "WARNING"
@@ -315,24 +320,18 @@ class ManimDirective(Directive):
             render_namespace.pop("_manim_rendered_scene", None)
             raise RuntimeError(f"Error while rendering example {clsname}") from e
 
-        _write_rendering_stats(
-            clsname,
-            run_time,
-            self.state.document.settings.env.docname,
-        )
+        _write_rendering_stats(clsname, run_time, docname)
 
         # copy video file to output directory
         if not (save_as_gif or save_last_frame):
-            filename = filesrc.name
-            destfile = Path(dest_dir, filename)
-            shutil.copyfile(filesrc, destfile)
+            shutil.copyfile(filesrc, dest_dir / video_name)
         rendered_template = jinja2.Template(TEMPLATE).render(
             clsname=clsname,
             clsname_lowercase=clsname.lower(),
             hide_source=hide_source,
             filesrc_rel=Path(filesrc).relative_to(setup.confdir).as_posix(),  # type: ignore[attr-defined]
             no_autoplay=no_autoplay,
-            output_file=output_file,
+            video_name=video_name,
             save_last_frame=save_last_frame,
             save_as_gif=save_as_gif,
             source_block=source_block,
@@ -369,8 +368,9 @@ def _log_rendering_times(*args: tuple[Any]) -> None:
 
         print("\nRendering Summary\n-----------------\n")
 
-        # filter out empty lists caused by csv reader
-        data = [row for row in data if row]
+        # filter out empty lists caused by csv reader, and group the rows
+        # by document (with parallel builds, they can arrive interleaved)
+        data = sorted((row for row in data if row), key=lambda row: row[0])
 
         max_file_length = max(len(row[0]) for row in data)
         for key, group_iter in it.groupby(data, key=lambda row: row[0]):
@@ -421,7 +421,7 @@ def setup(app: Sphinx) -> SetupMetadata:
     )
 
     metadata: SetupMetadata = {
-        "parallel_read_safe": False,
+        "parallel_read_safe": True,
         "parallel_write_safe": True,
     }
     return metadata
@@ -444,7 +444,7 @@ TEMPLATE = r"""
         controls
         loop
         {{ '' if no_autoplay else 'autoplay' }}
-        src="./{{ output_file }}.mp4">
+        src="./{{ video_name }}">
     </video>
 
 {% elif save_as_gif %}
